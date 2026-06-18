@@ -40,9 +40,11 @@ export async function generateWithGemini(prompt: string): Promise<string> {
     }
 
     const toolResponses: Part[] = [];
+    let didWrite = false;
 
     for (const call of result.functionCalls) {
       if (!call.name) continue;
+      if (call.name === "write") didWrite = true;
 
       toolResponses.push({
         functionResponse: {
@@ -54,6 +56,10 @@ export async function generateWithGemini(prompt: string): Promise<string> {
     }
 
     contents.push({ role: "user", parts: toolResponses });
+
+    if (didWrite) {
+      return "Updated the project files.";
+    }
   }
 
   return "Stopped after too many tool calls. Please try a more specific request.";

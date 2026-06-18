@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 interface Plan {
   id: string;
@@ -7,314 +7,196 @@ interface Plan {
   priceYearly: number;
   description: string;
   features: string[];
-  unsupportedFeatures?: string[];
-  cta: string;
   popular?: boolean;
   color?: string;
+  badge?: string;
 }
 
-const PLANS: Plan[] = [
+const plans: Plan[] = [
   {
     id: "starter",
     name: "Starter",
-    priceMonthly: 12,
-    priceYearly: 9, // Per month, billed yearly
-    description: "Perfect for students, hobbyists, and individuals building side projects.",
+    priceMonthly: 0,
+    priceYearly: 0,
+    description: "Perfect for students & hobbyists exploring interactive coding.",
     features: [
-      "1 Active Project",
-      "Live React Preview",
-      "Up to 5 custom components",
-      "Community support",
-      "Basic export capabilities"
+      "3 active sandbox projects",
+      "Live React preview in browser",
+      "Standard prompt generation limit",
+      "Community support discord",
+      "Basic file exports"
     ],
-    unsupportedFeatures: [
-      "Custom domain hosting",
-      "Team collaboration",
-      "Advanced AI prompt credits",
-      "24/7 Priority support"
-    ],
-    cta: "Start Free Trial",
-    color: "#fffdf6"
+    color: "#ffffff"
   },
   {
     id: "pro",
-    name: "Pro Builder",
-    priceMonthly: 29,
-    priceYearly: 22,
-    description: "For creators, freelancers, and small teams needing power and flexibility.",
+    name: "Developer Pro",
+    priceMonthly: 19,
+    priceYearly: 15,
+    description: "Unleash maximum productivity with extended Gemini features.",
     features: [
-      "Unlimited Active Projects",
-      "Instant Live React Preview",
-      "Unlimited components",
-      "Priority Email support (24h)",
-      "Custom domains & SSL",
-      "1,000 AI Prompt Credits / mo",
-      "Advanced export with assets"
+      "Unlimited active sandboxes",
+      "Priority preview server (Instant load)",
+      "Uncapped prompt edits & API custom calls",
+      "Advanced file tree & structural tools",
+      "Discord Premium access & Dev support",
+      "Offline cache support"
     ],
-    unsupportedFeatures: [
-      "Custom SLA & Dedicated host",
-      "Team billing management"
-    ],
-    cta: "Upgrade to Pro",
     popular: true,
+    badge: "Most Popular",
     color: "#cdff56"
   },
   {
     id: "enterprise",
-    name: "Enterprise",
-    priceMonthly: 79,
-    priceYearly: 59,
-    description: "For agencies and scaling teams needing premium support and infinite scale.",
+    name: "Enterprise Team",
+    priceMonthly: 49,
+    priceYearly: 39,
+    description: "Custom capabilities and collaborative workspaces for teams.",
     features: [
-      "Everything in Pro Builder",
-      "Unlimited Team Members",
-      "Dedicated account manager",
-      "Custom SLA & 24/7/365 phone support",
-      "Unlimited AI Prompt Credits",
-      "Custom SSO / SAML integration",
-      "On-premise deployment option"
+      "Everything in Developer Pro",
+      "Dedicated runner environments",
+      "SSO/SAML & Advanced access control",
+      "Custom system prompts & model selection",
+      "24/7 dedicated account manager",
+      "Shared team workspaces & analytics"
     ],
-    unsupportedFeatures: [],
-    cta: "Contact Sales",
     color: "#e7f0ff"
   }
 ];
 
-const FAQS = [
-  {
-    question: "How does the 14-day free trial work?",
-    answer: "You can sign up for any plan without a credit card. You'll get full access to all features of that plan for 14 days. If you don't upgrade, you will simply be downgraded to our free read-only view."
-  },
-  {
-    question: "Can I change plans or cancel at any time?",
-    answer: "Absolutely! You can upgrade, downgrade, or cancel your subscription directly from your settings dashboard. If you downgrade or cancel, you'll still have access to paid features until the end of your billing cycle."
-  },
-  {
-    question: "Do you offer discounts for educational institutions or non-profits?",
-    answer: "Yes, we support students, teachers, and open-source creators with a 50% discount. Reach out to our support team with proof of your affiliation to claim your coupon code!"
-  },
-  {
-    question: "What are 'AI Prompt Credits' and how do they renew?",
-    answer: "AI Prompt Credits power the prompt-driven coding assistant. Each prompt edits, rewires, or styles your React elements. Credits reset on the 1st of every month and do not roll over."
-  }
-];
-
-const CURRENCIES = [
-  { code: "USD", symbol: "$", rate: 1 },
-  { code: "EUR", symbol: "€", rate: 0.92 },
-  { code: "GBP", symbol: "£", rate: 0.78 }
-];
-
 export function App() {
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
-  const [currency, setCurrency] = useState("USD");
-  const [coupon, setCoupon] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState(0); // in percent
-  const [couponError, setCouponError] = useState("");
-  const [couponSuccess, setCouponSuccess] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [activeFaq, setActiveFaq] = useState<number | null>(null);
-  const [comparisonVisible, setComparisonVisible] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [currency, setCurrency] = useState<"USD" | "EUR" | "GBP">("USD");
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [emailInput, setEmailInput] = useState("");
+  const [purchaseStep, setPurchaseStep] = useState<"idle" | "success">("idle");
 
-  // Helper for currency conversion
-  const currObj = CURRENCIES.find((c) => c.code === currency) || CURRENCIES[0];
+  const currencySymbols = {
+    USD: "$",
+    EUR: "€",
+    GBP: "£"
+  };
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const currencyRates = {
+    USD: 1,
+    EUR: 0.92,
+    GBP: 0.79
+  };
+
+  const convertPrice = (priceUSD: number) => {
+    return Math.round(priceUSD * currencyRates[currency]);
+  };
+
+  const handleSelectPlan = (plan: Plan) => {
+    setSelectedPlan(plan);
+    setPurchaseStep("idle");
+    setEmailInput("");
+  };
+
+  const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
-    setCouponError("");
-    setCouponSuccess("");
-    const cleaned = coupon.trim().toUpperCase();
-
-    if (cleaned === "SAVE20") {
-      setAppliedDiscount(20);
-      setCouponSuccess("20% Coupon 'SAVE20' applied successfully!");
-    } else if (cleaned === "SUPERSTUDENT") {
-      setAppliedDiscount(50);
-      setCouponSuccess("50% Student discount applied!");
-    } else if (cleaned === "") {
-      setCouponError("Please enter a coupon code.");
-    } else {
-      setCouponError("Invalid coupon code. Try 'SAVE20' or 'SUPERSTUDENT'!");
-    }
-  };
-
-  const getPrice = (plan: Plan) => {
-    const base = billingCycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
-    const converted = base * currObj.rate;
-    const discounted = converted * (1 - appliedDiscount / 100);
-    return Math.round(discounted);
-  };
-
-  const selectPlanAction = (plan: Plan) => {
-    setSelectedPlan(plan.name);
+    if (!emailInput.trim()) return;
+    setPurchaseStep("success");
   };
 
   return (
     <main className="project-page">
-      {/* Hero Section */}
-      <section className="hero">
-        <p className="kicker">Interactive Sandbox Workspace</p>
-        <h1>Instant UI builder with Gemini Tool Integration</h1>
-        <p className="lede">
-          This project simulates a live interactive React application. Students use Gemini tool calls
-          to modify elements, test features, and build fully functional modern interfaces.
-        </p>
-        <div className="feature-row">
-          <span>⚡ Live React rendering</span>
-          <span>💎 Responsive styling</span>
-          <span>🛠️ Interactive states</span>
-          <span>💅 Custom components</span>
-        </div>
-      </section>
-
-      {/* Pricing Header Section */}
-      <section className="pricing-section">
-        <div className="pricing-header">
-          <span className="badge">Transparent Pricing</span>
-          <h2>Flexible plans for any scale</h2>
-          <p className="subtitle">
-            Get instant access to AI assistance, blazing-fast deployment, and professional components.
-            Choose a plan that fits your ambition.
+      <div className="container">
+        {/* Hero Section */}
+        <section className="hero">
+          <p className="kicker">Flexible Pricing Plans</p>
+          <h1>Find the perfect plan for your development.</h1>
+          <p className="lede">
+            Scale your React workspace dynamically. Start for free, upgrade as you build larger templates, or scale to enterprise levels with custom tools.
           </p>
 
-          {/* Interactive Controls Bar */}
-          <div className="controls-bar">
-            {/* Billing Cycle Switcher */}
+          {/* Pricing Controls Row */}
+          <div className="pricing-controls">
             <div className="toggle-container">
-              <span className="toggle-label">Billing Cycle</span>
-              <div className="toggle-buttons">
-                <button
-                  className={billingCycle === "monthly" ? "active" : ""}
-                  onClick={() => setBillingCycle("monthly")}
-                >
-                  Monthly
-                </button>
-                <button
-                  className={billingCycle === "yearly" ? "active" : ""}
-                  onClick={() => setBillingCycle("yearly")}
-                >
-                  Yearly <span className="save-tag">Save ~25%</span>
-                </button>
-              </div>
+              <span className={`toggle-label ${billingCycle === "monthly" ? "active" : ""}`}>
+                Monthly
+              </span>
+              <button
+                className={`switch-button ${billingCycle === "yearly" ? "checked" : ""}`}
+                onClick={() => setBillingCycle(billingCycle === "monthly" ? "yearly" : "monthly")}
+                aria-label="Toggle billing cycle"
+              >
+                <span className="switch-handle" />
+              </button>
+              <span className={`toggle-label ${billingCycle === "yearly" ? "active" : ""}`}>
+                Yearly <span className="save-badge">Save ~20%</span>
+              </span>
             </div>
 
-            {/* Currency Selector */}
-            <div className="currency-container">
-              <span className="toggle-label">Currency</span>
+            <div className="currency-selector">
+              <label htmlFor="currency-select" className="currency-label">Currency:</label>
               <select
+                id="currency-select"
                 value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="neo-select"
+                onChange={(e) => setCurrency(e.target.value as any)}
+                className="currency-dropdown"
               >
-                {CURRENCIES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} ({c.symbol})
-                  </option>
-                ))}
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
               </select>
             </div>
-
-            {/* Coupon Code Input */}
-            <div className="coupon-container">
-              <span className="toggle-label">Promo Code</span>
-              <form onSubmit={handleApplyCoupon} className="coupon-form">
-                <input
-                  type="text"
-                  placeholder="Promo code (e.g. SAVE20)"
-                  value={coupon}
-                  onChange={(e) => setCoupon(e.target.value)}
-                  className="neo-input"
-                />
-                <button type="submit" className="neo-btn-sm">
-                  Apply
-                </button>
-              </form>
-              <span className="coupon-hint">Try "SAVE20" or "SUPERSTUDENT"</span>
-            </div>
           </div>
+        </section>
 
-          {/* Coupon Status Message */}
-          {couponError && <p className="coupon-msg error">{couponError}</p>}
-          {couponSuccess && <p className="coupon-msg success">{couponSuccess}</p>}
-        </div>
-
-        {/* Pricing Grid */}
+        {/* Pricing Cards Grid */}
         <div className="pricing-grid">
-          {PLANS.map((plan) => {
-            const price = getPrice(plan);
-            const isPopular = plan.popular;
+          {plans.map((plan) => {
+            const rawPrice = billingCycle === "monthly" ? plan.priceMonthly : plan.priceYearly;
+            const finalPrice = convertPrice(rawPrice);
 
             return (
               <div
                 key={plan.id}
-                className={`plan-card ${isPopular ? "popular-card" : ""}`}
-                style={{ backgroundColor: plan.color }}
+                className={`pricing-card ${plan.popular ? "featured" : ""}`}
+                style={{ "--accent-color": plan.color } as React.CSSProperties}
               >
-                {isPopular && <div className="popular-ribbon">🔥 MOST POPULAR</div>}
-
-                <div className="plan-header">
+                {plan.popular && <div className="popular-badge">{plan.badge}</div>}
+                
+                <div className="card-header">
                   <h3 className="plan-name">{plan.name}</h3>
                   <p className="plan-desc">{plan.description}</p>
                 </div>
 
                 <div className="price-container">
-                  <span className="price-symbol">{currObj.symbol}</span>
-                  <span className="price-amount">{price}</span>
-                  <span className="price-period">/ month</span>
+                  <span className="price-currency">{currencySymbols[currency]}</span>
+                  <span className="price-amount">{finalPrice}</span>
+                  <span className="price-period">
+                    /{billingCycle === "monthly" ? "mo" : "mo"}
+                  </span>
                 </div>
-
-                <p className="billing-hint">
-                  {billingCycle === "yearly"
-                    ? `Billed annually (${currObj.symbol}${price * 12}/yr)`
-                    : "Billed monthly"}
-                </p>
+                
+                {billingCycle === "yearly" && plan.priceYearly > 0 && (
+                  <div className="billed-annually">
+                    Billed annually ({currencySymbols[currency]}
+                    {convertPrice(plan.priceYearly * 12)}/yr)
+                  </div>
+                )}
+                {plan.priceMonthly === 0 && <div className="billed-annually">Free forever</div>}
 
                 <button
-                  className={`cta-button ${isPopular ? "cta-popular" : "cta-standard"}`}
-                  onClick={() => selectPlanAction(plan)}
+                  className="plan-cta-button"
+                  onClick={() => handleSelectPlan(plan)}
                 >
-                  {plan.cta}
+                  {plan.priceMonthly === 0 ? "Get Started" : `Subscribe to ${plan.name}`}
                 </button>
 
                 <div className="divider" />
 
-                <div className="features-list">
+                <div className="features-section">
                   <p className="features-title">What's included:</p>
-                  <ul>
+                  <ul className="features-list">
                     {plan.features.map((feat, idx) => (
-                      <li key={idx} className="included-feature">
-                        <svg
-                          className="feat-icon success-icon"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M5 13l4 4L19 7"
-                          />
+                      <li key={idx} className="feature-item">
+                        <svg className="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
                         </svg>
-                        {feat}
-                      </li>
-                    ))}
-                    {plan.unsupportedFeatures?.map((feat, idx) => (
-                      <li key={idx} className="unsupported-feature">
-                        <svg
-                          className="feat-icon fail-icon"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2.5}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                        {feat}
+                        <span>{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -324,135 +206,87 @@ export function App() {
           })}
         </div>
 
-        {/* Interactive Selection Notification / Success Modal */}
+        {/* Dynamic Plan Checkout / Selection Modal Helper */}
         {selectedPlan && (
-          <div className="success-banner-overlay">
-            <div className="success-banner">
-              <h3>🎉 Perfect Choice!</h3>
-              <p>
-                You have selected the <strong>{selectedPlan}</strong> plan on the{" "}
-                <strong>{billingCycle} billing cycle</strong> ({currObj.symbol}
-                {getPrice(PLANS.find((p) => p.name === selectedPlan)!)}/mo, billed {billingCycle === "yearly" ? "annually" : "monthly"}).
-              </p>
-              {appliedDiscount > 0 && (
-                <p className="discount-applied-alert">
-                  🏷️ Applied {appliedDiscount}% coupon discount on your selection!
-                </p>
+          <div className="modal-overlay" onClick={() => setSelectedPlan(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <button className="close-btn" onClick={() => setSelectedPlan(null)} aria-label="Close modal">
+                &times;
+              </button>
+              
+              {purchaseStep === "idle" ? (
+                <div>
+                  <div className="modal-header-accent" style={{ background: selectedPlan.color }} />
+                  <span className="modal-kicker">Checkout Simulation</span>
+                  <h2>Subscribe to {selectedPlan.name}</h2>
+                  <p className="modal-desc">
+                    You've selected the <strong>{selectedPlan.name}</strong> plan billed{" "}
+                    <strong>{billingCycle}</strong> at{" "}
+                    <strong>
+                      {currencySymbols[currency]}
+                      {convertPrice(billingCycle === "monthly" ? selectedPlan.priceMonthly : selectedPlan.priceYearly)}/{billingCycle === "monthly" ? "month" : "month"}
+                    </strong>.
+                  </p>
+
+                  <form onSubmit={handleSubscribe} className="checkout-form">
+                    <label htmlFor="email" className="form-label">Enter your email address</label>
+                    <input
+                      id="email"
+                      type="email"
+                      required
+                      placeholder="hello@example.com"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      className="checkout-input"
+                    />
+                    <button type="submit" className="checkout-submit-btn">
+                      Confirm & Start Sandbox
+                    </button>
+                  </form>
+                  <p className="modal-disclaimer">
+                    No actual payment information is required. This is a fully functional prototype playground.
+                  </p>
+                </div>
+              ) : (
+                <div className="success-screen">
+                  <div className="success-icon">🎉</div>
+                  <h2>Welcome onboard!</h2>
+                  <p>
+                    Thank you for choosing <strong>{selectedPlan.name}</strong>. A simulated confirmation email has been sent to <strong>{emailInput}</strong>.
+                  </p>
+                  <div className="receipt-box">
+                    <p><strong>Plan:</strong> {selectedPlan.name} ({billingCycle})</p>
+                    <p><strong>Price:</strong> {currencySymbols[currency]}{convertPrice(billingCycle === "monthly" ? selectedPlan.priceMonthly : selectedPlan.priceYearly)}/{billingCycle === "monthly" ? "mo" : "mo"}</p>
+                    <p><strong>Status:</strong> Active (Prototype Mode)</p>
+                  </div>
+                  <button className="checkout-submit-btn" onClick={() => setSelectedPlan(null)}>
+                    Back to Pricing
+                  </button>
+                </div>
               )}
-              <div className="banner-actions">
-                <button
-                  className="neo-btn-sm success-btn"
-                  onClick={() => alert(`Starting setup for your new ${selectedPlan} space...`)}
-                >
-                  Proceed to Checkout
-                </button>
-                <button
-                  className="neo-btn-sm cancel-btn"
-                  onClick={() => setSelectedPlan(null)}
-                >
-                  Change selection
-                </button>
-              </div>
             </div>
           </div>
         )}
 
-        {/* Comparison Toggle Button */}
-        <div className="toggle-comparison-container">
-          <button
-            className="toggle-comparison-btn"
-            onClick={() => setComparisonVisible(!comparisonVisible)}
-          >
-            {comparisonVisible ? "▲ Hide Full Plan Comparison" : "▼ Show Full Plan Comparison"}
-          </button>
-        </div>
-
-        {/* Full Comparison Table */}
-        {comparisonVisible && (
-          <div className="comparison-table-wrapper">
-            <table className="comparison-table">
-              <thead>
-                <tr>
-                  <th>Feature Details</th>
-                  <th>Starter</th>
-                  <th className="highlight-col">Pro Builder</th>
-                  <th>Enterprise</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="feat-name">Monthly AI Credits</td>
-                  <td>50 credits</td>
-                  <td className="highlight-col">1,000 credits</td>
-                  <td>Unlimited credits</td>
-                </tr>
-                <tr>
-                  <td className="feat-name">Max Active Projects</td>
-                  <td>1 Project</td>
-                  <td className="highlight-col">Unlimited Projects</td>
-                  <td>Unlimited Projects</td>
-                </tr>
-                <tr>
-                  <td className="feat-name">Custom SSL Domains</td>
-                  <td>❌ Not available</td>
-                  <td className="highlight-col">✅ Up to 5 domains</td>
-                  <td>✅ Unlimited domains</td>
-                </tr>
-                <tr>
-                  <td className="feat-name">Deployment Targets</td>
-                  <td>Static Host</td>
-                  <td className="highlight-col">Static & Serverless</td>
-                  <td>Any custom cloud / On-Premise</td>
-                </tr>
-                <tr>
-                  <td className="feat-name">Team Collaboration</td>
-                  <td>❌ Read-only share</td>
-                  <td className="highlight-col">✅ Multi-user edit</td>
-                  <td>✅ Full SSO / Role Permissions</td>
-                </tr>
-                <tr>
-                  <td className="feat-name">Customer Support</td>
-                  <td>Community Forum</td>
-                  <td className="highlight-col">24h Priority Email</td>
-                  <td>24/7/365 Dedicated Phone/SLA</td>
-                </tr>
-              </tbody>
-            </table>
+        {/* Compare Table Toggle or Interactive Features Area */}
+        <section className="faq-section">
+          <h2>Pricing Frequently Asked Questions</h2>
+          <div className="faq-grid">
+            <div className="faq-card">
+              <h4>Can I upgrade or downgrade anytime?</h4>
+              <p>Yes, absolutely! You can upgrade, downgrade, or cancel your plan at any moment from your simulated dashboard billing settings. Changes are immediate.</p>
+            </div>
+            <div className="faq-card">
+              <h4>Are there any hidden fees or API limits?</h4>
+              <p>None. The prices listed represent everything you pay. Standard plans have high fair-use limits, while Developer Pro and Enterprise offer unlimited requests.</p>
+            </div>
+            <div className="faq-card">
+              <h4>What models power the React preview engine?</h4>
+              <p>Our editing assistant runs on Gemini 1.5 Pro and Flash, enabling instant structural edits to HTML, CSS, and TSX files with outstanding speed.</p>
+            </div>
           </div>
-        )}
-
-        {/* FAQs Accordion */}
-        <div className="faq-section">
-          <h3>Frequently Asked Questions</h3>
-          <p className="faq-intro">Got questions about pricing, setup, or features? We're here to help.</p>
-          <div className="faq-list">
-            {FAQS.map((faq, idx) => {
-              const isOpen = activeFaq === idx;
-              return (
-                <div
-                  key={idx}
-                  className={`faq-item ${isOpen ? "open" : ""}`}
-                  onClick={() => setActiveFaq(isOpen ? null : idx)}
-                >
-                  <div className="faq-question">
-                    <span>{faq.question}</span>
-                    <span className="faq-arrow">{isOpen ? "▲" : "▼"}</span>
-                  </div>
-                  {isOpen && <p className="faq-answer">{faq.answer}</p>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="pricing-footer">
-        <p>
-          Need custom volume billing? <a href="#contact">Contact our custom solutions team</a>. All rates
-          exclude local taxes where applicable.
-        </p>
-      </footer>
+        </section>
+      </div>
     </main>
   );
 }
